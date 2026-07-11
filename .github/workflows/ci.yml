@@ -7,12 +7,14 @@ on:
       - '**'
       - '.github/workflows/ci.yml'
       - 'package.json'
+      - 'pnpm-lock.yaml'
   pull_request:
     branches: [main]
     paths:
       - '**'
       - '.github/workflows/ci.yml'
       - 'package.json'
+      - 'pnpm-lock.yaml'
 
 permissions:
   contents: read
@@ -22,21 +24,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  ci:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 10
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 20.16.0
-        cache: pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.16.0
+          cache: pnpm
 
-    - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-    - run: pnpm run lint
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Type check
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
