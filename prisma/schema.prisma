@@ -20,6 +20,7 @@ model User {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
   pets           Pet[]
   sitterProfile  SitterProfile?
@@ -47,7 +48,7 @@ model SitterProfile {
 model Service {
   id               Int      @id @default(autoincrement())
   sitterProfileId  Int
-  type             String
+  type             ServiceType
   price            Decimal
   duration         Int?
   description      String?
@@ -69,6 +70,9 @@ model Booking {
   endTime   DateTime
   status    BookingStatus @default(PENDING)
 
+  ownerNotes String?
+  sitterNotes String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -84,7 +88,7 @@ model Pet {
   id        Int       @id @default(autoincrement())
   ownerId   Int
   name      String
-  type      String?
+  type      PetType
   breed     String?
   age       Int?
   createdAt DateTime  @default(now())
@@ -98,7 +102,22 @@ model Pet {
 
 enum BookingStatus {
   PENDING
-  CONFIRMED
+  ACCEPTED
+  DECLINED
   CANCELLED
   COMPLETED
+}
+
+enum ServiceType {
+  WALKING
+  DAYCARE
+  HOME_VISIT
+  OVERNIGHT
+}
+
+enum PetType {
+  DOG
+  CAT
+  BIRD
+  OTHER
 }
