@@ -1,22 +1,42 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePetDto } from './dto/create-pet.dto';
 import { UpdatePetDto } from './dto/update-pet.dto';
 
 @Injectable()
 export class PetsService {
-  create(createPetDto: CreatePetDto) {
-    return 'This action adds a new pet';
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(ownerId: number, createPetDto: CreatePetDto) {
+    return this.prisma.pet.create({
+      data: {
+        ...createPetDto,
+        ownerId,
+      },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} pet`;
+  async findOne(id: number, ownerId: number) {
+    const pet = await this.prisma.pet.findUnique({
+      where: { id, ownerId },
+      include: { owner: true },
+    });
+
+    if (!pet) {
+      throw new NotFoundException(`Pet #${id} not found`);
+    }
+
+    return pet;
   }
 
-  update(id: number, updatePetDto: UpdatePetDto) {
-    return `This action updates a #${id} pet`;
+  async update(id: number, ownerId: number, updatePetDto: UpdatePetDto) {
+    return this.prisma.pet.update({
+      where: { id, ownerId },
+      data: updatePetDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} pet`;
+  async remove(id: number, ownerId: number) {
+    return this.prisma.pet.delete({ where: { id, ownerId } });
   }
 }
