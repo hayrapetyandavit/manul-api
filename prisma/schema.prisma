@@ -62,7 +62,7 @@ model Service {
 model Booking {
   id        Int           @id @default(autoincrement())
   ownerId   Int
-  sitterId  Int
+  sitterId  Int?
   petId     Int
   serviceId Int
 
@@ -77,7 +77,7 @@ model Booking {
   updatedAt DateTime @updatedAt
 
   owner   User    @relation("OwnerBookings", fields: [ownerId], references: [id])
-  sitter  User    @relation("SitterBookings", fields: [sitterId], references: [id])
+  sitter  User?   @relation("SitterBookings", fields: [sitterId], references: [id])
   pet     Pet     @relation(fields: [petId], references: [id])
   service Service @relation(fields: [serviceId], references: [id])
 
