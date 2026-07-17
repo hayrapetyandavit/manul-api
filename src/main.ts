@@ -4,7 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
-import { PrismaClientExceptionFilter } from './prisma-client-exception/prisma-client-exception.filter';
+import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
