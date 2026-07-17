@@ -1,12 +1,7 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { BookingStatus, Prisma } from '../../generated/prisma/client';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { Prisma } from 'generated/prisma/client';
 
 @Injectable()
 export class BookingsService {
@@ -33,54 +28,44 @@ export class BookingsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(ownerId: number, createBookingDto: CreateBookingDto) {
-    const { sitterId, petId, serviceId, startTime, endTime, ownerNotes } =
-      createBookingDto;
+  async create() {
+    // const { petId, serviceId, startTime, endTime, ownerNotes } =
+    //   createBookingDto;
+    // // Verify the pet belongs to the requesting owner
+    // const pet = await this.prisma.pet.findFirst({
+    //   where: { id: petId, ownerId },
+    // });
+    // if (!pet) {
+    //   throw new NotFoundException(`Pet #${petId} not found`);
+    // }
+    // // Verify the service exists and belongs to the target sitter
+    // const service = await this.prisma.service.findFirst({
+    //   where: { id: serviceId, sitterProfile: { userId } },
+    // });
+    // if (!service) {
+    //   throw new NotFoundException(`Service #${serviceId} not found`);
+    // }
+    // if (new Date(startTime) >= new Date(endTime)) {
+    //   throw new BadRequestException('startTime must be before endTime');
+    // }
+    // return this.prisma.booking.create({
+    //   data: {
+    //     ownerId,
+    //     petId,
+    //     serviceId,
+    //     startTime: new Date(startTime),
+    //     endTime: new Date(endTime),
+    //     ownerNotes,
+    //   },
+    //   include: this.bookingInclude,
+    // });
+  }
 
-    // Verify the pet belongs to the requesting owner
-    const pet = await this.prisma.pet.findFirst({
-      where: { id: petId, ownerId },
-    });
-    if (!pet) {
-      throw new NotFoundException(`Pet #${petId} not found`);
-    }
-
-    // Verify the service exists and belongs to the target sitter
-    const service = await this.prisma.service.findFirst({
-      where: { id: serviceId, sitterProfile: { userId: sitterId } },
-    });
-    if (!service) {
-      throw new NotFoundException(`Service #${serviceId} not found`);
-    }
-
-    if (new Date(startTime) >= new Date(endTime)) {
-      throw new BadRequestException('startTime must be before endTime');
-    }
-
-    return this.prisma.booking.create({
-      data: {
-        ownerId,
-        sitterId,
-        petId,
-        serviceId,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        ownerNotes,
+  async findUserBookings(userId: number) {
+    return this.prisma.booking.findMany({
+      where: {
+        OR: [{ ownerId: userId }, { sitterId: userId }],
       },
-      include: this.bookingInclude,
-    });
-  }
-
-  async findOwnerBookings(ownerId: number) {
-    return this.prisma.booking.findMany({
-      where: { ownerId },
-      include: this.bookingInclude,
-    });
-  }
-
-  async findSitterBookings(sitterId: number) {
-    return this.prisma.booking.findMany({
-      where: { sitterId },
       include: this.bookingInclude,
     });
   }

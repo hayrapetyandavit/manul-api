@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   UseGuards,
-  Request,
   ParseIntPipe,
 } from '@nestjs/common';
 import { PetsService } from './pets.service';
