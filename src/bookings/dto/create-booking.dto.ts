@@ -13,9 +13,10 @@ export class CreateBookingDto {
   @IsPositive()
   petId: number;
 
+  @IsOptional()
   @IsInt()
   @IsPositive()
-  serviceId: number;
+  sitterServiceId?: number;
 
   @IsDateString()
   @DateRange({

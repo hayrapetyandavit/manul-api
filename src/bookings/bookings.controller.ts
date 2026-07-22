@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Post,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -35,9 +36,9 @@ export class BookingsController {
   @Patch(':id')
   update(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateBookingDto: UpdateBookingDto,
   ) {
-    return this.bookingsService.update(+id, user.id, updateBookingDto);
+    return this.bookingsService.update(id, user.id, updateBookingDto);
   }
 }
