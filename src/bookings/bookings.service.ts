@@ -9,7 +9,7 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 export class BookingsService {
   private readonly bookingInclude = {
     pet: true,
-    service: true,
+    sitterService: true,
     owner: {
       select: {
         id: true,
@@ -18,12 +18,9 @@ export class BookingsService {
         email: true,
       },
     },
-    sitter: {
+    sitterProfile: {
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
       },
     },
   } satisfies Prisma.BookingInclude;
@@ -31,12 +28,12 @@ export class BookingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(ownerId: number, createBookingDto: CreateBookingDto) {
-    const { petId, serviceId, startTime, endTime, ownerNotes } =
+    const { petId, sitterServiceId, startTime, endTime, ownerNotes } =
       createBookingDto;
 
     await Promise.all([
-      this.prisma.service.findUniqueOrThrow({
-        where: { id: serviceId },
+      this.prisma.sitterService.findUniqueOrThrow({
+        where: { id: sitterServiceId },
       }),
       this.prisma.pet.findUniqueOrThrow({
         where: { id: petId, ownerId },
@@ -47,7 +44,7 @@ export class BookingsService {
       data: {
         ownerId,
         petId,
-        serviceId,
+        sitterServiceId,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
         ownerNotes,
@@ -59,9 +56,10 @@ export class BookingsService {
   async findUserBookings(userId: number) {
     return this.prisma.booking.findMany({
       where: {
-        OR: [{ ownerId: userId }, { sitterId: userId }],
+        OR: [{ ownerId: userId }, { sitterProfileId: userId }],
       },
       include: this.bookingInclude,
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -79,7 +77,7 @@ export class BookingsService {
     }
 
     return this.prisma.booking.update({
-      where: { id },
+      where: { id, ownerId },
       data: updateBookingDto,
       include: this.bookingInclude,
     });

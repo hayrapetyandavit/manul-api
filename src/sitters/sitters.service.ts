@@ -14,15 +14,15 @@ export class SittersService {
         sitterProfile: { isNot: null },
       },
       include: {
-        sitterProfile: { include: { services: true } },
+        sitterProfile: { include: { sitterServices: true } },
       },
     });
   }
 
   async findProfile(userId: number) {
-    return this.prisma.sitterProfile.findUnique({
+    return this.prisma.sitterProfile.findUniqueOrThrow({
       where: { userId },
-      include: { services: true },
+      include: { sitterServices: true },
     });
   }
 
@@ -33,7 +33,7 @@ export class SittersService {
         description: dto.description,
         experienceYears: dto.experienceYears,
       },
-      include: { services: true },
+      include: { sitterServices: true },
     });
   }
 
@@ -41,7 +41,7 @@ export class SittersService {
     return this.prisma.sitterProfile.update({
       where: { userId },
       data: dto,
-      include: { services: true },
+      include: { sitterServices: true },
     });
   }
 

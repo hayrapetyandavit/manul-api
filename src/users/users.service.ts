@@ -11,7 +11,7 @@ export class UsersService {
       where: { email, deletedAt: null },
       include: {
         pets: true,
-        sitterProfile: { include: { services: true } },
+        sitterProfile: { include: { sitterServices: true } },
       },
     });
   }
