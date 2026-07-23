@@ -28,13 +28,20 @@ export class BookingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(ownerId: number, createBookingDto: CreateBookingDto) {
-    const { petId, sitterServiceId, startTime, endTime, ownerNotes } =
-      createBookingDto;
+    const {
+      petId,
+      serviceType,
+      // sitterServiceId,
+      startTime,
+      endTime,
+      ownerNotes,
+    } = createBookingDto;
 
     await Promise.all([
-      this.prisma.sitterService.findUniqueOrThrow({
-        where: { id: sitterServiceId },
-      }),
+      // TODO: sitterServiceId should be with sitterProfileId
+      // this.prisma.sitterService.findUniqueOrThrow({
+      //   where: { id: sitterServiceId },
+      // }),
       this.prisma.pet.findUniqueOrThrow({
         where: { id: petId, ownerId },
       }),
@@ -44,7 +51,7 @@ export class BookingsService {
       data: {
         ownerId,
         petId,
-        sitterServiceId,
+        serviceType,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
         ownerNotes,
