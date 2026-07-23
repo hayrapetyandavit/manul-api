@@ -69,8 +69,9 @@ model Booking {
   id              Int @id @default(autoincrement())
 
   ownerId         Int
-  sitterProfileId Int?
   petId           Int
+  serviceType     ServiceType
+  sitterProfileId Int?
   sitterServiceId Int?
 
   bookingPrice Decimal @default(0) @db.Decimal(10, 2)
