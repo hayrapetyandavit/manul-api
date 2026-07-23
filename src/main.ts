@@ -25,6 +25,11 @@ async function bootstrap() {
 
   app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
 
+  app.enableCors({
+    origin: configService.get<string>('ALLOWED_ORIGINS')?.split(','),
+    credentials: true,
+  });
+
   const port = configService.get<number>('port') || 3000;
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);
