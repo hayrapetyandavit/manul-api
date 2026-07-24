@@ -46,13 +46,15 @@ model SitterProfile {
 }
 
 model SitterService {
-  id              Int         @id @default(autoincrement())
-  sitterProfileId Int
+  id                Int         @id @default(autoincrement())
+  sitterProfileId   Int
 
-  type        ServiceType
-  price       Decimal     @db.Decimal(10, 2)
-  durationMin Int?
-  description String?
+  type              ServiceType
+  petTypes          PetType[]
+
+  price             Decimal     @db.Decimal(10, 2)
+  durationMin       Int?
+  description       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -63,6 +65,7 @@ model SitterService {
   @@map("sitter_services")
 
   @@index([sitterProfileId])
+  @@unique([sitterProfileId, type])
 }
 
 model Booking {

@@ -38,6 +38,7 @@ export class SitterServicesService {
       data: {
         sitterProfileId: profile.id,
         type: dto.type,
+        petTypes: dto.petTypes,
         price: dto.price,
         durationMin: dto.durationMin,
         description: dto.description,
