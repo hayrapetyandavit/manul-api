@@ -1,7 +1,9 @@
-import { ServiceType } from '../../../generated/prisma/client';
+import { PetType, ServiceType } from '../../../generated/prisma/client';
 import {
+  IsArray,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
@@ -12,6 +14,11 @@ import {
 export class CreateSitterServiceDto {
   @IsEnum(ServiceType)
   type: ServiceType;
+
+  @IsArray()
+  @IsEnum(PetType, { each: true })
+  @IsNotEmpty()
+  petTypes: PetType[];
 
   @IsPositive()
   price: number;
