@@ -16,4 +16,8 @@ export class CreatePetDto {
   @IsInt()
   @Min(0)
   age?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 }

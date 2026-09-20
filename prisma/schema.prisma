@@ -73,11 +73,10 @@ model Booking {
 
   ownerId         Int
   petId           Int
-  serviceType     ServiceType
   sitterProfileId Int?
   sitterServiceId Int?
 
-  bookingPrice Decimal @default(0) @db.Decimal(10, 2)
+  price Decimal @default(0) @db.Decimal(10, 2)
 
   startTime DateTime
   endTime   DateTime
@@ -113,10 +112,11 @@ model Pet {
   id      Int @id @default(autoincrement())
   ownerId Int
 
-  name  String
-  type  PetType
-  breed String?
-  age   Int?
+  name        String
+  type        PetType
+  breed       String?
+  age         Int?
+  description String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

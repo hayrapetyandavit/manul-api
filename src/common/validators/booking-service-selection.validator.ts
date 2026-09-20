@@ -12,14 +12,14 @@ import { CreateBookingDto } from 'src/bookings/dto/create-booking.dto';
 })
 export class BookingServiceSelectionValidator implements ValidatorConstraintInterface {
   validate(dto: CreateBookingDto) {
-    const hasServiceType = !!dto.serviceType;
-    const hasSitterService = !!dto.sitterProfileId && !!dto.sitterServiceId;
+    const hasSitterProfileId = dto.sitterProfileId != null;
+    const hasSitterServiceId = dto.sitterServiceId != null;
 
-    return !(hasServiceType && hasSitterService);
+    return hasSitterProfileId === hasSitterServiceId;
   }
 
   defaultMessage() {
-    return 'Provide either serviceType or sitterProfileId with sitterServiceId, not both.';
+    return 'Provide both sitterProfileId and sitterServiceId, or neither.';
   }
 }
 export function BookingServiceSelection(validationOptions?: ValidationOptions) {
