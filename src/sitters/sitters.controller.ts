@@ -20,8 +20,8 @@ export class SittersController {
   constructor(private readonly sittersService: SittersService) {}
 
   @Get()
-  findAll() {
-    return this.sittersService.findAll();
+  findAll(@CurrentUser() user: JwtUser) {
+    return this.sittersService.findAll(user.id);
   }
 
   @Get('profile')

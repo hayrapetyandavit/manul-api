@@ -25,6 +25,7 @@ model User {
   sitterProfile SitterProfile?
 
   ownerBookings Booking[] @relation("OwnerBookings")
+  reviews       Review[]
 
   @@map("users")
 }
@@ -93,6 +94,7 @@ model Booking {
   sitterProfile SitterProfile? @relation("SitterProfileBookings", fields: [sitterProfileId], references: [id])
   pet           Pet           @relation(fields: [petId], references: [id])
   sitterService SitterService? @relation(fields: [sitterServiceId], references: [id])
+  reviews       Review[]
 
   @@map("bookings")
 
@@ -136,6 +138,25 @@ model Pet {
   @@map("pets")
 
   @@index([ownerId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  bookingId  Int
+  reviewerId Int
+
+  rating  Int
+  comment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  reviewer User    @relation(fields: [reviewerId], references: [id])
+
+  @@unique([bookingId, reviewerId])
+  @@index([reviewerId])
+  @@map("reviews")
 }
 
 enum BookingStatus {

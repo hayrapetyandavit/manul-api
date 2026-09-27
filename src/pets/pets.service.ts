@@ -8,17 +8,10 @@ export class PetsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(ownerId: number, createPetDto: CreatePetDto) {
-    const { birthDate, vetName, vetPhone, vetAddress, ...requiredFields } =
-      createPetDto;
-
     return this.prisma.pet.create({
       data: {
-        ...requiredFields,
-        birthDate: new Date(birthDate),
+        ...createPetDto,
         ownerId,
-        vetName,
-        vetPhone,
-        vetAddress,
       },
     });
   }
@@ -37,14 +30,9 @@ export class PetsService {
   }
 
   async update(id: number, ownerId: number, updatePetDto: UpdatePetDto) {
-    const { birthDate, ...fields } = updatePetDto;
-
     return this.prisma.pet.update({
       where: { id, ownerId },
-      data: {
-        ...fields,
-        ...(birthDate !== undefined && { birthDate: new Date(birthDate) }),
-      },
+      data: updatePetDto,
     });
   }
 
