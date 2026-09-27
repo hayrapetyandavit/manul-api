@@ -7,9 +7,10 @@ import { UpdateSitterProfileDto } from './dto/update-sitter-profile.dto';
 export class SittersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(userId: number) {
     return this.prisma.user.findMany({
       where: {
+        id: { not: userId },
         deletedAt: null,
         sitterProfile: { isNot: null },
       },

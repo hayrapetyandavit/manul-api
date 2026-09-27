@@ -32,7 +32,6 @@ export class BookingsService {
       petId,
       sitterProfileId,
       sitterServiceId,
-      serviceType,
       startTime,
       endTime,
       ownerNotes,
@@ -47,7 +46,6 @@ export class BookingsService {
         where: {
           id: sitterServiceId,
           sitterProfileId,
-          type: serviceType,
         },
       });
     }
@@ -58,7 +56,6 @@ export class BookingsService {
         petId,
         sitterProfileId,
         sitterServiceId,
-        serviceType,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
         ownerNotes,

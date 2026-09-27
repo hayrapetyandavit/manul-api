@@ -25,6 +25,7 @@ model User {
   sitterProfile SitterProfile?
 
   ownerBookings Booking[] @relation("OwnerBookings")
+  reviews       Review[]
 
   @@map("users")
 }
@@ -73,11 +74,10 @@ model Booking {
 
   ownerId         Int
   petId           Int
-  serviceType     ServiceType
   sitterProfileId Int?
   sitterServiceId Int?
 
-  bookingPrice Decimal @default(0) @db.Decimal(10, 2)
+  price Decimal @default(0) @db.Decimal(10, 2)
 
   startTime DateTime
   endTime   DateTime
@@ -94,6 +94,7 @@ model Booking {
   sitterProfile SitterProfile? @relation("SitterProfileBookings", fields: [sitterProfileId], references: [id])
   pet           Pet           @relation(fields: [petId], references: [id])
   sitterService SitterService? @relation(fields: [sitterServiceId], references: [id])
+  reviews       Review[]
 
   @@map("bookings")
 
@@ -113,10 +114,20 @@ model Pet {
   id      Int @id @default(autoincrement())
   ownerId Int
 
-  name  String
-  type  PetType
-  breed String?
-  age   Int?
+  name             String
+  type             PetType
+  breed            String
+  birthDate        DateTime           @db.Date
+  coat             PetCoat
+  weightKg         Decimal            @db.Decimal(6, 2)
+  generalHealth    PetGeneralHealth
+  temperament      PetTemperament
+  gender           PetGender
+  neuteredSpayed   Boolean
+  description      String?
+  vetName          String?
+  vetPhone         String?
+  vetAddress       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -127,6 +138,25 @@ model Pet {
   @@map("pets")
 
   @@index([ownerId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  bookingId  Int
+  reviewerId Int
+
+  rating  Int
+  comment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  reviewer User    @relation(fields: [reviewerId], references: [id])
+
+  @@unique([bookingId, reviewerId])
+  @@index([reviewerId])
+  @@map("reviews")
 }
 
 enum BookingStatus {
@@ -149,4 +179,29 @@ enum PetType {
   CAT
   BIRD
   OTHER
+}
+
+enum PetCoat {
+  SHORT
+  MEDIUM
+  LONG
+}
+
+enum PetGeneralHealth {
+  HEALTHY
+  NORMAL
+  NEEDS_ADDITIONAL_CARE
+}
+
+enum PetTemperament {
+  PASSIVE
+  ENERGETIC
+  ASSERTIVE
+  PASSIVE_AGGRESSIVE
+  AGGRESSIVE
+}
+
+enum PetGender {
+  MALE
+  FEMALE
 }

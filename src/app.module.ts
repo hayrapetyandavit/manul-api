@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { PetsModule } from './pets/pets.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { SittersModule } from './sitters/sitters.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SittersModule } from './sitters/sitters.module';
     PetsModule,
     BookingsModule,
     SittersModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

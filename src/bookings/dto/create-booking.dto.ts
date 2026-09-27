@@ -1,12 +1,10 @@
 import {
   IsDateString,
-  IsEnum,
   IsInt,
   IsOptional,
   IsPositive,
   IsString,
 } from 'class-validator';
-import { ServiceType } from 'generated/prisma/client';
 import { DateTime } from 'luxon';
 import { BookingServiceSelection } from 'src/common/validators/booking-service-selection.validator';
 import { DateRange } from 'src/common/validators/date-range.validator';
@@ -26,10 +24,6 @@ export class CreateBookingDto {
   @IsInt()
   @IsPositive()
   sitterServiceId?: number;
-
-  @IsOptional()
-  @IsEnum(ServiceType)
-  serviceType?: ServiceType;
 
   @IsDateString()
   @DateRange({
