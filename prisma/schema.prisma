@@ -112,11 +112,20 @@ model Pet {
   id      Int @id @default(autoincrement())
   ownerId Int
 
-  name        String
-  type        PetType
-  breed       String?
-  age         Int?
-  description String?
+  name             String
+  type             PetType
+  breed            String
+  birthDate        DateTime           @db.Date
+  coat             PetCoat
+  weightKg         Decimal            @db.Decimal(6, 2)
+  generalHealth    PetGeneralHealth
+  temperament      PetTemperament
+  gender           PetGender
+  neuteredSpayed   Boolean
+  description      String?
+  vetName          String?
+  vetPhone         String?
+  vetAddress       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -149,4 +158,29 @@ enum PetType {
   CAT
   BIRD
   OTHER
+}
+
+enum PetCoat {
+  SHORT
+  MEDIUM
+  LONG
+}
+
+enum PetGeneralHealth {
+  HEALTHY
+  NORMAL
+  NEEDS_ADDITIONAL_CARE
+}
+
+enum PetTemperament {
+  PASSIVE
+  ENERGETIC
+  ASSERTIVE
+  PASSIVE_AGGRESSIVE
+  AGGRESSIVE
+}
+
+enum PetGender {
+  MALE
+  FEMALE
 }
