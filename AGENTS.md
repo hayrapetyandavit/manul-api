@@ -195,6 +195,11 @@ Assume more than one API process can run.
 - Use database constraints and `$transaction()` for operations that must not interleave, including the one-service-per-type uniqueness rule.
 - Do not add scheduled jobs that perform the same business write on every instance unless the task includes a coordination strategy.
 
+## Code Style
+
+- Keep public methods before private methods in a class.
+- Private methods must be placed at the end of the class.
+
 ## HTTP surface
 
 Routes below are the current controllers. Re-read the controller before adding or changing a route.

@@ -19,7 +19,7 @@ export class ReviewsService {
   async create(reviewerId: number, createReviewDto: CreateReviewDto) {
     const { bookingId, rating, comment } = createReviewDto;
 
-    await this.prisma.booking.findFirstOrThrow({
+    const booking = await this.prisma.booking.findFirstOrThrow({
       where: {
         id: bookingId,
         status: BookingStatus.COMPLETED,
@@ -35,17 +35,46 @@ export class ReviewsService {
           },
         ],
       },
+      select: { sitterProfileId: true },
     });
 
-    return this.prisma.review.create({
-      data: {
-        bookingId,
-        reviewerId,
-        rating,
-        comment,
-      },
-      select: reviewPublicSelect,
+    const aggregate = await this.prisma.review.aggregate({
+      where: { booking: { sitterProfileId: booking.sitterProfileId } },
+      _avg: { rating: true },
+      _count: { rating: true },
     });
+
+    const averageRating = this.calculateAverageRating(
+      Number(aggregate._avg.rating ?? 0),
+      aggregate._count.rating,
+      rating,
+    );
+
+    const updated = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        reviews: {
+          create: {
+            reviewerId,
+            rating,
+            comment,
+          },
+        },
+        sitterProfile: {
+          update: { averageRating },
+        },
+      },
+      select: {
+        reviews: {
+          where: { reviewerId },
+          select: reviewPublicSelect,
+          orderBy: { id: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    return updated.reviews[0];
   }
 
   async findForUser(userId: number) {
@@ -85,5 +114,21 @@ export class ReviewsService {
       averageRating: aggregate._avg.rating,
       reviewCount: aggregate._count,
     };
+  }
+
+  private calculateAverageRating(
+    currentAverage: number,
+    reviewCount: number,
+    rating: number,
+  ): number {
+    if (reviewCount === 0) {
+      return rating;
+    }
+
+    return (
+      Math.round(
+        ((currentAverage * reviewCount + rating) / (reviewCount + 1)) * 100,
+      ) / 100
+    );
   }
 }

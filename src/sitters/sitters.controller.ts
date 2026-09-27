@@ -5,10 +5,12 @@ import {
   Body,
   Patch,
   Delete,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { SittersService } from './sitters.service';
 import { CreateSitterProfileDto } from './dto/create-sitter-profile.dto';
+import { FindSittersQueryDto } from './dto/find-sitters-query.dto';
 import { UpdateSitterProfileDto } from './dto/update-sitter-profile.dto';
 import { JwtAuthGuard } from 'src/auth/utils/Guards';
 import { CurrentUser } from 'src/auth/decorators/user.decorator';
@@ -20,8 +22,8 @@ export class SittersController {
   constructor(private readonly sittersService: SittersService) {}
 
   @Get()
-  findAll(@CurrentUser() user: JwtUser) {
-    return this.sittersService.findAll(user.id);
+  findAll(@CurrentUser() user: JwtUser, @Query() query: FindSittersQueryDto) {
+    return this.sittersService.findAll(user.id, query);
   }
 
   @Get('profile')
