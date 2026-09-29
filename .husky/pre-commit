@@ -1,0 +1,2 @@
+pnpm exec eslint "{src,test}/**/*.ts"
+pnpm typecheck
