@@ -1,9 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateBookingDto } from './dto/update-booking.dto';
-import { Prisma } from 'generated/prisma/client';
-import { validateStatusTransition } from './booking-status.transitions';
+import { BookingStatus, Prisma } from 'generated/prisma/client';
+import {
+  BookingParty,
+  validateStatusTransition,
+} from './booking-status.transitions';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { DateTime } from 'luxon';
 
 @Injectable()
 export class BookingsService {
@@ -21,6 +29,7 @@ export class BookingsService {
     sitterProfile: {
       select: {
         id: true,
+        userId: true,
       },
     },
   } satisfies Prisma.BookingInclude;
@@ -37,17 +46,46 @@ export class BookingsService {
       ownerNotes,
     } = createBookingDto;
 
-    await this.prisma.pet.findUniqueOrThrow({
+    const pet = await this.prisma.pet.findUniqueOrThrow({
       where: { id: petId, ownerId },
     });
 
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    let price: Prisma.Decimal | undefined;
+
     if (sitterProfileId && sitterServiceId) {
-      await this.prisma.sitterService.findFirstOrThrow({
+      const service = await this.prisma.sitterService.findFirstOrThrow({
         where: {
           id: sitterServiceId,
           sitterProfileId,
+          petTypes: { has: pet.type },
+          sitterProfile: {
+            userId: { not: ownerId },
+            user: { isActive: true, deletedAt: null },
+          },
         },
       });
+
+      price = service.price;
+    }
+
+    if (sitterProfileId) {
+      const overlap = await this.prisma.booking.findFirst({
+        where: {
+          sitterProfileId,
+          status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
+          startTime: { lt: end },
+          endTime: { gt: start },
+        },
+        select: { id: true },
+      });
+
+      if (overlap) {
+        throw new ConflictException(
+          'Sitter already has a booking in that time range',
+        );
+      }
     }
 
     return this.prisma.booking.create({
@@ -56,8 +94,9 @@ export class BookingsService {
         petId,
         sitterProfileId,
         sitterServiceId,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
+        price,
+        startTime: start,
+        endTime: end,
         ownerNotes,
       },
       include: this.bookingInclude,
@@ -67,29 +106,77 @@ export class BookingsService {
   async findUserBookings(userId: number) {
     return this.prisma.booking.findMany({
       where: {
-        OR: [{ ownerId: userId }, { sitterProfileId: userId }],
+        OR: [{ ownerId: userId }, { sitterProfile: { userId } }],
       },
       include: this.bookingInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async update(
-    id: number,
-    ownerId: number,
-    updateBookingDto: UpdateBookingDto,
-  ) {
-    const booking = await this.prisma.booking.findUniqueOrThrow({
-      where: { id },
+  async update(id: number, userId: number, updateBookingDto: UpdateBookingDto) {
+    const booking = await this.prisma.booking.findFirstOrThrow({
+      where: {
+        id,
+        OR: [
+          {
+            ownerId: userId,
+            NOT: { sitterProfile: { userId } },
+          },
+          {
+            ownerId: { not: userId },
+            sitterProfile: { userId },
+          },
+        ],
+      },
     });
 
-    if (updateBookingDto.status) {
-      validateStatusTransition(booking.status, updateBookingDto.status);
+    const party: BookingParty = booking.ownerId === userId ? 'owner' : 'sitter';
+    const { status, ownerNotes, sitterNotes } = updateBookingDto;
+
+    if (
+      status === undefined &&
+      ownerNotes === undefined &&
+      sitterNotes === undefined
+    ) {
+      throw new BadRequestException('No booking changes were provided');
+    }
+
+    const ownerNotesNotAllowed =
+      ownerNotes !== undefined &&
+      (party !== 'owner' || booking.status !== BookingStatus.PENDING);
+
+    const sitterNotesNotAllowed =
+      sitterNotes !== undefined &&
+      (party !== 'sitter' ||
+        (booking.status !== BookingStatus.PENDING &&
+          booking.status !== BookingStatus.ACCEPTED));
+
+    if (ownerNotesNotAllowed || sitterNotesNotAllowed) {
+      throw new BadRequestException('Notes cannot be changed for this booking');
+    }
+
+    if (status) {
+      validateStatusTransition(booking.status, status, party);
+
+      if (
+        status === BookingStatus.COMPLETED &&
+        DateTime.now() < DateTime.fromJSDate(booking.endTime)
+      ) {
+        throw new BadRequestException(
+          'Booking can be completed only after it ends',
+        );
+      }
     }
 
     return this.prisma.booking.update({
-      where: { id, ownerId },
-      data: updateBookingDto,
+      where: {
+        id,
+        status: booking.status,
+        ...(party === 'owner'
+          ? { ownerId: userId }
+          : { sitterProfile: { userId } }),
+      },
+      data: { status, ownerNotes, sitterNotes },
       include: this.bookingInclude,
     });
   }

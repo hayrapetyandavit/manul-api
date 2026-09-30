@@ -103,12 +103,14 @@ docker-compose.dev.yml          # Local Postgres
 - Allowed booking flow:
 
 ```text
-PENDING → ACCEPTED | DECLINED | CANCELLED
-ACCEPTED → COMPLETED | CANCELLED
+PENDING → sitter: ACCEPTED | DECLINED; owner: CANCELLED
+ACCEPTED → sitter: CANCELLED | COMPLETED (complete only after endTime); owner: CANCELLED
 DECLINED, CANCELLED, COMPLETED → terminal
 ```
 
-- `PrismaClientExceptionFilter` maps `P2025` to 404 and `P2002` to 409. Other known Prisma errors fall through to Nest's base exception filter.
+Owner notes change only while `PENDING`. Sitter notes change only while `PENDING` or `ACCEPTED`. `PATCH /bookings/:id` accepts status and those notes only.
+
+- `PrismaClientExceptionFilter` maps `P2025` to 404 and `P2002` to 409 with generic messages. Other known Prisma errors return a generic 500. Do not log or return the raw Prisma message.
 - Do not expose SQL, credentials, stack traces, or Prisma client internals in new API error messages.
 - Do not add a parallel error-code or interceptor system unless explicitly requested.
 
@@ -135,11 +137,11 @@ DECLINED, CANCELLED, COMPLETED → terminal
 
 **Do not copy these mismatches into new code:**
 
-- `BookingsService.findUserBookings` compares `sitterProfileId` to the user id. A sitter lookup has to go through `sitterProfile.userId`.
-- `GET /users/:id` passes the path param into `UsersService.findOne`, which queries `User.email`.
 - `JWT_SECRET` and the JWT module currently fall back to `'default'`, and token expiry is not configured. Do not add new secret fallbacks.
 
-Leave those behaviors alone unless the task is to change them.
+Leave that behavior alone unless the task is to change it.
+
+Sitter booking lookups go through `sitterProfile.userId`, not `sitterProfileId`. `GET /users/:id` loads an active user by numeric id via `UsersService.findById` and does not return email or pets.
 
 ### 5. Auth
 
