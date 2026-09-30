@@ -12,6 +12,7 @@ export class SittersService {
       where: {
         id: { not: userId },
         deletedAt: null,
+        isActive: true,
         sitterProfile: { isNot: null },
       },
       include: {
