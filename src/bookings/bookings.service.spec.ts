@@ -100,6 +100,24 @@ describe('BookingsService', () => {
     );
   });
 
+  it('returns a booking to the owner or assigned sitter and hides it from others', async () => {
+    const booking = { id: 5, ownerId: 1 };
+    prisma.booking.findFirstOrThrow.mockResolvedValue(booking);
+
+    await expect(service.findOne(5, 1)).resolves.toEqual(booking);
+    expect(prisma.booking.findFirstOrThrow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 5,
+          OR: [{ ownerId: 1 }, { sitterProfile: { userId: 1 } }],
+        },
+      }),
+    );
+
+    prisma.booking.findFirstOrThrow.mockRejectedValue(new Error('P2025'));
+    await expect(service.findOne(5, 9)).rejects.toThrow('P2025');
+  });
+
   it('lets the assigned sitter accept and blocks the owner from accepting', async () => {
     prisma.booking.findFirstOrThrow.mockResolvedValue({
       id: 5,

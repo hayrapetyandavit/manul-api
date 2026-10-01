@@ -33,6 +33,11 @@ export class BookingsController {
     return this.bookingsService.findUserBookings(user.id);
   }
 
+  @Get(':id')
+  findOne(@CurrentUser() user: JwtUser, @Param('id', ParseIntPipe) id: number) {
+    return this.bookingsService.findOne(id, user.id);
+  }
+
   @Patch(':id')
   update(
     @CurrentUser() user: JwtUser,

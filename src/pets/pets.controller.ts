@@ -26,6 +26,11 @@ export class PetsController {
     return this.petsService.create(user.id, createPetDto);
   }
 
+  @Get()
+  findAll(@CurrentUser() user: JwtUser) {
+    return this.petsService.findAll(user.id);
+  }
+
   @Get(':id')
   findOne(@CurrentUser() user: JwtUser, @Param('id', ParseIntPipe) id: number) {
     return this.petsService.findOne(id, user.id);

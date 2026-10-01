@@ -113,6 +113,16 @@ export class BookingsService {
     });
   }
 
+  async findOne(id: number, userId: number) {
+    return this.prisma.booking.findFirstOrThrow({
+      where: {
+        id,
+        OR: [{ ownerId: userId }, { sitterProfile: { userId } }],
+      },
+      include: this.bookingInclude,
+    });
+  }
+
   async update(id: number, userId: number, updateBookingDto: UpdateBookingDto) {
     const booking = await this.prisma.booking.findFirstOrThrow({
       where: {
