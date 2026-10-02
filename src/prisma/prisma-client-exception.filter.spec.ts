@@ -35,6 +35,23 @@ describe('PrismaClientExceptionFilter', () => {
     expect(JSON.stringify(json.mock.calls)).not.toContain('secret column');
   });
 
+  it('hides an unmapped prisma error behind a generic 500', () => {
+    const { host: argumentsHost, status, json } = host();
+    const exception = new Prisma.PrismaClientKnownRequestError(
+      'Foreign key constraint failed on the field: (`petId`)',
+      { code: 'P2003', clientVersion: 'test' },
+    );
+
+    filter.catch(exception, argumentsHost);
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: 'Internal server error',
+    });
+    expect(JSON.stringify(json.mock.calls)).not.toContain('petId');
+  });
+
   it('maps a unique conflict to a generic 409', () => {
     const { host: argumentsHost, status, json } = host();
     const exception = new Prisma.PrismaClientKnownRequestError(

@@ -1,5 +1,6 @@
 import {
   registerDecorator,
+  ValidationArguments,
   ValidationOptions,
   ValidatorConstraint,
   ValidatorConstraintInterface,
@@ -11,7 +12,8 @@ import { CreateBookingDto } from 'src/bookings/dto/create-booking.dto';
   async: false,
 })
 export class BookingServiceSelectionValidator implements ValidatorConstraintInterface {
-  validate(dto: CreateBookingDto) {
+  validate(_value: unknown, args: ValidationArguments) {
+    const dto = args.object as CreateBookingDto;
     const hasSitterProfileId = dto.sitterProfileId != null;
     const hasSitterServiceId = dto.sitterServiceId != null;
 
