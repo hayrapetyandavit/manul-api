@@ -1,2 +1,3 @@
 pnpm exec eslint "{src,test}/**/*.ts"
 pnpm typecheck
+pnpm test --coverage
