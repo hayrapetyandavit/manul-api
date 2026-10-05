@@ -28,6 +28,20 @@ describe('UsersService', () => {
     service = module.get(UsersService);
   });
 
+  it('loads the caller by email and ignores a deleted account', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    await service.findOne('a@b.c');
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { email: 'a@b.c', deletedAt: null },
+      include: {
+        pets: true,
+        sitterProfile: { include: { sitterServices: true } },
+      },
+    });
+  });
+
   it('loads a public profile by numeric id', async () => {
     prisma.user.findUniqueOrThrow.mockResolvedValue({
       id: 4,
