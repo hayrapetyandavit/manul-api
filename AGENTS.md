@@ -27,7 +27,8 @@ prisma/
 prisma.config.ts                # Prisma 7 config; DATABASE_URL lives here
 
 src/
-  main.ts                       # Bootstrap: helmet, ValidationPipe, CORS, Prisma filter
+  main.ts                       # Bootstrap: configureApp, then listen
+  app.setup.ts                  # Helmet, ValidationPipe, CORS, Prisma filter
   app.module.ts                 # Root module
   app.controller.ts             # Public GET /
 
@@ -39,6 +40,7 @@ src/
   pets/                         # Owner pets
   sitters/                      # Sitter profiles and services
   bookings/                     # Booking create/list/update and status transitions
+  reviews/                      # Reviews for completed bookings
   common/
     middleware/                 # HTTP request logging
     validators/                 # Custom class-validator constraints
@@ -46,7 +48,7 @@ src/
   prisma/                       # PrismaService, global module, exception filter
 
 generated/prisma/               # Generated client (gitignored). Do not edit.
-test/                           # E2E Jest config and tests
+test/                           # E2E Jest config, helpers, and tests
 docker-compose.dev.yml          # Local Postgres
 ```
 
@@ -210,6 +212,7 @@ Routes below are the current controllers. Re-read the controller before adding o
 | Sitters | `GET /sitters`, `GET/POST/PATCH/DELETE /sitters/profile` | JWT |
 | Sitter services | `GET/POST /sitters/services`, `GET/PATCH/DELETE /sitters/services/:id` | JWT |
 | Bookings | `POST /bookings`, `GET /bookings`, `PATCH /bookings/:id` | JWT |
+| Reviews | `POST /reviews`, `GET /reviews/user/:userId` | JWT |
 
 ## Domain enums
 
@@ -242,7 +245,9 @@ After a schema change, run `pnpm prisma:generate`. Ask before `pnpm prisma:migra
 
 Do not invent script names. Read `package.json` before running commands.
 
-Unit tests live next to source as `*.spec.ts`. E2E tests use `test/jest-e2e.json`. Build tests with `@nestjs/testing`. Mock `PrismaService`. Do not hit Postgres from unit tests. Add or update tests when changing business rules such as booking transitions, ownership checks, or DTO validation.
+Unit tests live next to source as `*.spec.ts`. E2E tests use `test/jest-e2e.json` and hit a real Postgres database. Build unit tests with `@nestjs/testing`. Mock `PrismaService` in unit tests. Do not hit Postgres from unit tests. Add or update tests when changing business rules such as booking transitions, ownership checks, or DTO validation.
+
+E2E tests call `configureApp` from `src/app.setup.ts`, the same setup `main.ts` uses. They sign JWTs with `JWT_SECRET` instead of going through Google. `pnpm test:e2e` loads `.env.test` when that file exists. Otherwise it copies `DATABASE_URL` from the environment or `.env` and, when the database name does not already contain `test`, uses `<name>_test`. The suite exits before connecting if the database name does not contain `test`. Apply migrations with `pnpm test:e2e:db` or let `pnpm test:e2e` apply them during Jest global setup.
 
 Local Postgres is `pnpm docker:up` (`docker-compose.dev.yml`), which reads `DB_USERNAME`, `DB_PASSWORD`, and `DB_DATABASE`.
 

@@ -1,35 +1,17 @@
-import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { Logger, ValidationPipe } from '@nestjs/common';
-import helmet from 'helmet';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
+import { configureApp } from './app.setup';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.use(helmet());
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  configureApp(app);
 
   const configService = app.get(ConfigService);
-  const { httpAdapter } = app.get(HttpAdapterHost);
-
-  app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
-
-  app.enableCors({
-    origin: configService.get<string>('ALLOWED_ORIGINS')?.split(','),
-    credentials: true,
-  });
-
   const port = configService.get<number>('port') || 3000;
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);

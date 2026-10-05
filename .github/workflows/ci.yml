@@ -27,6 +27,21 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: manul_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -56,3 +71,13 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: End-to-end tests
+        run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/manul_test
+          JWT_SECRET: ci-e2e-secret
+          CLIENT_ID: ci-client-id
+          CLIENT_SECRET: ci-client-secret
+          REDIRECT_URI: http://localhost:3000/auth/google/redirect
+          FRONTEND_URL: http://localhost:5173
