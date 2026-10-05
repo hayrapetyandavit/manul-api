@@ -1,24 +1,28 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { createTestApp } from './utils/create-test-app';
 
-describe('AppController (e2e)', () => {
+describe('App (e2e)', () => {
   let app: INestApplication;
+  let prisma: PrismaService;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+  beforeAll(async () => {
+    ({ app, prisma } = await createTestApp());
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('GET / returns the public greeting through the real app pipeline', async () => {
+    const response = await request(app.getHttpServer()).get('/').expect(200);
+
+    expect(response.text).toBe('Hello World!');
+    expect(response.headers['x-dns-prefetch-control']).toBe('off');
+  });
+
+  it('connects to the test database', async () => {
+    await expect(prisma.$queryRaw`SELECT 1`).resolves.toBeDefined();
   });
 });

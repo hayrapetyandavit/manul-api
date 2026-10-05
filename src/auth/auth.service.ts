@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Profile } from 'passport';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { JwtUser } from './types/jwt-payload.type';
 
 @Injectable()
 export class AuthService {
@@ -11,15 +12,22 @@ export class AuthService {
   ) {}
 
   async validateUser(profile: Profile) {
+    const email = profile.emails?.[0]?.value;
+    if (!email) {
+      throw new UnauthorizedException('Google account has no email');
+    }
+
+    const picture = profile.photos?.[0]?.value;
+
     return this.prisma.user.upsert({
       where: { googleId: profile.id },
-      update: { picture: profile.photos[0].value },
+      update: { picture },
       create: {
-        email: profile.emails[0].value,
+        email,
         googleId: profile.id,
-        firstName: profile.name.givenName,
-        lastName: profile.name.familyName,
-        picture: profile.photos[0].value,
+        firstName: profile.name?.givenName,
+        lastName: profile.name?.familyName,
+        picture,
       },
     });
   }
@@ -31,7 +39,7 @@ export class AuthService {
     return user;
   }
 
-  async generateJwtToken(user: any) {
+  async generateJwtToken(user: JwtUser) {
     const payload = { sub: user.id, email: user.email };
     return {
       access_token: this.jwtService.sign(payload),
