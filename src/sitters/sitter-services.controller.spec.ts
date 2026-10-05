@@ -13,7 +13,7 @@ describe('SitterServicesController', () => {
     update: jest.fn(),
     remove: jest.fn(),
   };
-  const user = { id: 7, email: 'sitter@example.com' } as JwtUser;
+  const user = { id: 1, email: 'sitter@example.com' } as JwtUser;
   const dto = { price: 25 } as CreateSitterServiceDto;
 
   beforeEach(async () => {
@@ -28,19 +28,43 @@ describe('SitterServicesController', () => {
     controller = module.get(SitterServicesController);
   });
 
-  it('passes the service id and the current user into the service', () => {
-    controller.findAll(user);
-    controller.findOne(4, user);
-    controller.create(user, dto);
-    controller.update(4, user, { price: 30 });
-    controller.remove(4, user);
+  it("lists the current user's services", async () => {
+    sitterServicesService.findAllByUser.mockResolvedValue([{ id: 4 }]);
 
-    expect(sitterServicesService.findAllByUser).toHaveBeenCalledWith(7);
-    expect(sitterServicesService.findOneByUser).toHaveBeenCalledWith(4, 7);
-    expect(sitterServicesService.create).toHaveBeenCalledWith(7, dto);
-    expect(sitterServicesService.update).toHaveBeenCalledWith(4, 7, {
+    await expect(controller.findAll(user)).resolves.toEqual([{ id: 4 }]);
+    expect(sitterServicesService.findAllByUser).toHaveBeenCalledWith(1);
+  });
+
+  it('loads one service with the route id and the current user', async () => {
+    sitterServicesService.findOneByUser.mockResolvedValue({ id: 4 });
+
+    await expect(controller.findOne(4, user)).resolves.toEqual({ id: 4 });
+    expect(sitterServicesService.findOneByUser).toHaveBeenCalledWith(4, 1);
+  });
+
+  it('creates a service for the current user', async () => {
+    sitterServicesService.create.mockResolvedValue({ id: 4 });
+
+    await expect(controller.create(user, dto)).resolves.toEqual({ id: 4 });
+    expect(sitterServicesService.create).toHaveBeenCalledWith(1, dto);
+  });
+
+  it('updates a service only as the current user', async () => {
+    sitterServicesService.update.mockResolvedValue({ id: 4, price: 30 });
+
+    await expect(controller.update(4, user, { price: 30 })).resolves.toEqual({
+      id: 4,
       price: 30,
     });
-    expect(sitterServicesService.remove).toHaveBeenCalledWith(4, 7);
+    expect(sitterServicesService.update).toHaveBeenCalledWith(4, 1, {
+      price: 30,
+    });
+  });
+
+  it('deletes a service only as the current user', async () => {
+    sitterServicesService.remove.mockResolvedValue({ id: 4 });
+
+    await expect(controller.remove(4, user)).resolves.toEqual({ id: 4 });
+    expect(sitterServicesService.remove).toHaveBeenCalledWith(4, 1);
   });
 });

@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from 'generated/prisma/client';
 import { BookingStatus } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateReviewDto } from './dto/create-review.dto';
 import { ReviewsService } from './reviews.service';
 
 describe('ReviewsService', () => {
@@ -14,6 +16,17 @@ describe('ReviewsService', () => {
     };
   };
 
+  const ownerId = 1;
+  const sitterUserId = 2;
+  const strangerId = 3;
+  const publicSelect = {
+    id: true,
+    bookingId: true,
+    rating: true,
+    comment: true,
+    createdAt: true,
+    updatedAt: true,
+  };
   const publicReview = {
     id: 1,
     bookingId: 9,
@@ -22,6 +35,44 @@ describe('ReviewsService', () => {
     createdAt: new Date('2026-10-01T00:00:00.000Z'),
     updatedAt: new Date('2026-10-01T00:00:00.000Z'),
   };
+
+  function reviewableBy(reviewerId: number) {
+    return {
+      id: 9,
+      status: BookingStatus.COMPLETED,
+      sitterProfileId: { not: null },
+      OR: [
+        {
+          ownerId: reviewerId,
+          sitterProfile: { userId: { not: reviewerId } },
+        },
+        {
+          sitterProfile: { userId: reviewerId },
+          ownerId: { not: reviewerId },
+        },
+      ],
+    };
+  }
+
+  function aboutUser(userId: number) {
+    return {
+      OR: [
+        {
+          booking: {
+            ownerId: userId,
+            sitterProfileId: { not: null },
+          },
+          NOT: { reviewerId: userId },
+        },
+        {
+          booking: {
+            sitterProfile: { userId },
+          },
+          NOT: { reviewerId: userId },
+        },
+      ],
+    };
+  }
 
   beforeEach(async () => {
     prisma = {
@@ -40,59 +91,72 @@ describe('ReviewsService', () => {
     service = module.get(ReviewsService);
   });
 
-  it('reviews a completed booking only when the caller is the other party', async () => {
+  it('lets the owner review a completed booking and stores the caller as reviewer', async () => {
     prisma.booking.findFirstOrThrow.mockResolvedValue({ id: 9 });
     prisma.review.create.mockResolvedValue(publicReview);
 
     await expect(
-      service.create(7, {
+      service.create(ownerId, {
         bookingId: 9,
         rating: 5,
         comment: 'Careful with the leash',
-      }),
+        reviewerId: strangerId,
+      } as CreateReviewDto),
     ).resolves.toEqual(publicReview);
 
     expect(prisma.booking.findFirstOrThrow).toHaveBeenCalledWith({
-      where: {
-        id: 9,
-        status: BookingStatus.COMPLETED,
-        sitterProfileId: { not: null },
-        OR: [
-          {
-            ownerId: 7,
-            sitterProfile: { userId: { not: 7 } },
-          },
-          {
-            sitterProfile: { userId: 7 },
-            ownerId: { not: 7 },
-          },
-        ],
-      },
+      where: reviewableBy(ownerId),
     });
     expect(prisma.review.create).toHaveBeenCalledWith({
       data: {
         bookingId: 9,
-        reviewerId: 7,
+        reviewerId: ownerId,
         rating: 5,
         comment: 'Careful with the leash',
       },
-      select: {
-        id: true,
-        bookingId: true,
-        rating: true,
-        comment: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: publicSelect,
     });
   });
 
-  it('does not write a review when the booking is not reviewable', async () => {
-    prisma.booking.findFirstOrThrow.mockRejectedValue(new Error('not found'));
+  it('lets the assigned sitter review the same completed booking', async () => {
+    prisma.booking.findFirstOrThrow.mockResolvedValue({ id: 9 });
+    prisma.review.create.mockResolvedValue({
+      ...publicReview,
+      rating: 4,
+      comment: undefined,
+    });
+
+    await service.create(sitterUserId, { bookingId: 9, rating: 4 });
+
+    expect(prisma.booking.findFirstOrThrow).toHaveBeenCalledWith({
+      where: reviewableBy(sitterUserId),
+    });
+    expect(prisma.review.create).toHaveBeenCalledWith({
+      data: {
+        bookingId: 9,
+        reviewerId: sitterUserId,
+        rating: 4,
+        comment: undefined,
+      },
+      select: publicSelect,
+    });
+  });
+
+  it('does not write a review when the caller is not the other party', async () => {
+    prisma.booking.findFirstOrThrow.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: 'test',
+      }),
+    );
 
     await expect(
-      service.create(7, { bookingId: 9, rating: 4 }),
-    ).rejects.toThrow('not found');
+      service.create(strangerId, { bookingId: 9, rating: 5 }),
+    ).rejects.toMatchObject({ code: 'P2025' });
+
+    expect(prisma.booking.findFirstOrThrow).toHaveBeenCalledWith({
+      where: reviewableBy(strangerId),
+    });
     expect(prisma.review.create).not.toHaveBeenCalled();
   });
 
@@ -103,45 +167,38 @@ describe('ReviewsService', () => {
       _count: 2,
     });
 
-    await expect(service.findForUser(7)).resolves.toEqual({
+    await expect(service.findForUser(sitterUserId)).resolves.toEqual({
       reviews: [publicReview],
       averageRating: 4.5,
       reviewCount: 2,
     });
 
-    const aboutUser = {
-      OR: [
-        {
-          booking: {
-            ownerId: 7,
-            sitterProfileId: { not: null },
-          },
-          NOT: { reviewerId: 7 },
-        },
-        {
-          booking: {
-            sitterProfile: { userId: 7 },
-          },
-          NOT: { reviewerId: 7 },
-        },
-      ],
-    };
     expect(prisma.review.findMany).toHaveBeenCalledWith({
-      where: aboutUser,
-      select: {
-        id: true,
-        bookingId: true,
-        rating: true,
-        comment: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      where: aboutUser(sitterUserId),
+      select: publicSelect,
       orderBy: { createdAt: 'desc' },
     });
     expect(prisma.review.aggregate).toHaveBeenCalledWith({
-      where: aboutUser,
+      where: aboutUser(sitterUserId),
       _avg: { rating: true },
       _count: true,
     });
+  });
+
+  it('returns an empty summary when the user has no reviews about them', async () => {
+    prisma.review.findMany.mockResolvedValue([]);
+    prisma.review.aggregate.mockResolvedValue({
+      _avg: { rating: null },
+      _count: 0,
+    });
+
+    await expect(service.findForUser(ownerId)).resolves.toEqual({
+      reviews: [],
+      averageRating: null,
+      reviewCount: 0,
+    });
+    expect(prisma.review.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: aboutUser(ownerId) }),
+    );
   });
 });

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from 'generated/prisma/client';
 import { PetType, ServiceType } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateSitterServiceDto } from './dto/create-sitter-service.dto';
@@ -17,7 +18,11 @@ describe('SitterServicesService', () => {
     };
   };
 
-  const ownedBy = { sitterProfile: { userId: 7 } };
+  const userId = 1;
+  const otherUserId = 2;
+  const ownedBy = (owner: number) => ({
+    sitterProfile: { userId: owner },
+  });
   const dto = {
     type: ServiceType.WALKING,
     petTypes: [PetType.DOG],
@@ -25,6 +30,13 @@ describe('SitterServicesService', () => {
     durationMin: 30,
     description: 'Neighborhood loop',
   } as CreateSitterServiceDto;
+
+  function missingRecord() {
+    return new Prisma.PrismaClientKnownRequestError('Record not found', {
+      code: 'P2025',
+      clientVersion: 'test',
+    });
+  }
 
   beforeEach(async () => {
     prisma = {
@@ -48,29 +60,49 @@ describe('SitterServicesService', () => {
     service = module.get(SitterServicesService);
   });
 
-  it('lists and loads services only through the caller’s profile', async () => {
-    prisma.sitterService.findMany.mockResolvedValue([]);
-    prisma.sitterService.findUnique.mockResolvedValue(null);
+  it("lists only the caller's services", async () => {
+    const rows = [{ id: 4, sitterProfileId: 12 }];
+    prisma.sitterService.findMany.mockResolvedValue(rows);
 
-    await service.findAllByUser(7);
-    await service.findOneByUser(4, 7);
-
+    await expect(service.findAllByUser(userId)).resolves.toBe(rows);
     expect(prisma.sitterService.findMany).toHaveBeenCalledWith({
-      where: ownedBy,
-    });
-    expect(prisma.sitterService.findUnique).toHaveBeenCalledWith({
-      where: { id: 4, ...ownedBy },
+      where: ownedBy(userId),
     });
   });
 
-  it('attaches a new service to the caller’s profile id', async () => {
-    prisma.sitterProfile.findUniqueOrThrow.mockResolvedValue({ id: 12 });
-    prisma.sitterService.create.mockResolvedValue({ id: 4 });
+  it("loads a service only through the caller's profile", async () => {
+    const row = { id: 4, sitterProfileId: 12 };
+    prisma.sitterService.findUnique.mockResolvedValue(row);
 
-    await service.create(7, dto);
+    await expect(service.findOneByUser(4, userId)).resolves.toBe(row);
+    expect(prisma.sitterService.findUnique).toHaveBeenCalledWith({
+      where: { id: 4, ...ownedBy(userId) },
+    });
+  });
+
+  it('returns nothing when the service belongs to another sitter', async () => {
+    prisma.sitterService.findUnique.mockResolvedValue(null);
+
+    await expect(service.findOneByUser(4, otherUserId)).resolves.toBeNull();
+    expect(prisma.sitterService.findUnique).toHaveBeenCalledWith({
+      where: { id: 4, ...ownedBy(otherUserId) },
+    });
+  });
+
+  it("attaches a new service to the caller's profile, not a body profile id", async () => {
+    prisma.sitterProfile.findUniqueOrThrow.mockResolvedValue({ id: 12 });
+    prisma.sitterService.create.mockResolvedValue({
+      id: 4,
+      sitterProfileId: 12,
+    });
+
+    await service.create(userId, {
+      ...dto,
+      sitterProfileId: 99,
+    } as CreateSitterServiceDto);
 
     expect(prisma.sitterProfile.findUniqueOrThrow).toHaveBeenCalledWith({
-      where: { userId: 7 },
+      where: { userId },
       select: { id: true },
     });
     expect(prisma.sitterService.create).toHaveBeenCalledWith({
@@ -85,19 +117,56 @@ describe('SitterServicesService', () => {
     });
   });
 
-  it('updates and deletes a service only when the profile belongs to the caller', async () => {
-    prisma.sitterService.update.mockResolvedValue({ id: 4 });
-    prisma.sitterService.delete.mockResolvedValue({ id: 4 });
+  it('does not insert a service when the caller has no profile', async () => {
+    prisma.sitterProfile.findUniqueOrThrow.mockRejectedValue(missingRecord());
 
-    await service.update(4, 7, { price: 30 });
-    await service.remove(4, 7);
+    await expect(service.create(userId, dto)).rejects.toMatchObject({
+      code: 'P2025',
+    });
+    expect(prisma.sitterService.create).not.toHaveBeenCalled();
+  });
 
+  it('lets the caller change the price of their service', async () => {
+    prisma.sitterService.update.mockResolvedValue({ id: 4, price: 30 });
+
+    await expect(
+      service.update(4, userId, { price: 30 }),
+    ).resolves.toMatchObject({ price: 30 });
     expect(prisma.sitterService.update).toHaveBeenCalledWith({
-      where: { id: 4, ...ownedBy },
+      where: { id: 4, ...ownedBy(userId) },
       data: { price: 30 },
     });
-    expect(prisma.sitterService.delete).toHaveBeenCalledWith({
-      where: { id: 4, ...ownedBy },
+  });
+
+  it("user A cannot edit user B's sitter service", async () => {
+    prisma.sitterService.update.mockRejectedValue(missingRecord());
+
+    await expect(
+      service.update(4, otherUserId, { price: 1 }),
+    ).rejects.toMatchObject({ code: 'P2025' });
+
+    expect(prisma.sitterService.update).toHaveBeenCalledTimes(1);
+    expect(prisma.sitterService.update).toHaveBeenCalledWith({
+      where: { id: 4, ...ownedBy(otherUserId) },
+      data: { price: 1 },
     });
+  });
+
+  it("lets the caller delete their service and blocks another sitter's", async () => {
+    prisma.sitterService.delete.mockResolvedValueOnce({ id: 4 });
+
+    await expect(service.remove(4, userId)).resolves.toMatchObject({ id: 4 });
+    expect(prisma.sitterService.delete).toHaveBeenCalledWith({
+      where: { id: 4, ...ownedBy(userId) },
+    });
+
+    prisma.sitterService.delete.mockRejectedValueOnce(missingRecord());
+    await expect(service.remove(4, otherUserId)).rejects.toMatchObject({
+      code: 'P2025',
+    });
+    expect(prisma.sitterService.delete).toHaveBeenLastCalledWith({
+      where: { id: 4, ...ownedBy(otherUserId) },
+    });
+    expect(prisma.sitterService.update).not.toHaveBeenCalled();
   });
 });

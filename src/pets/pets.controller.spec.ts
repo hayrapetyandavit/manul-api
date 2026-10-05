@@ -12,7 +12,7 @@ describe('PetsController', () => {
     update: jest.fn(),
     remove: jest.fn(),
   };
-  const user = { id: 7, email: 'owner@example.com' } as JwtUser;
+  const user = { id: 1, email: 'owner@example.com' } as JwtUser;
   const dto = { name: 'Rex' } as CreatePetDto;
 
   beforeEach(async () => {
@@ -25,15 +25,42 @@ describe('PetsController', () => {
     controller = module.get(PetsController);
   });
 
-  it('passes the current user id into every pet operation', () => {
-    controller.create(user, dto);
-    controller.findOne(user, 3);
-    controller.update(user, 3, { name: 'Rexy' });
-    controller.remove(user, 3);
+  it('creates a pet for the current user and returns it', async () => {
+    petsService.create.mockResolvedValue({ id: 3, ownerId: 1 });
 
-    expect(petsService.create).toHaveBeenCalledWith(7, dto);
-    expect(petsService.findOne).toHaveBeenCalledWith(3, 7);
-    expect(petsService.update).toHaveBeenCalledWith(3, 7, { name: 'Rexy' });
-    expect(petsService.remove).toHaveBeenCalledWith(3, 7);
+    await expect(controller.create(user, dto)).resolves.toEqual({
+      id: 3,
+      ownerId: 1,
+    });
+    expect(petsService.create).toHaveBeenCalledWith(1, dto);
+  });
+
+  it('loads a pet with the current user id, not an id from the body', async () => {
+    petsService.findOne.mockResolvedValue({ id: 3, ownerId: 1 });
+
+    await expect(controller.findOne(user, 3)).resolves.toEqual({
+      id: 3,
+      ownerId: 1,
+    });
+    expect(petsService.findOne).toHaveBeenCalledWith(3, 1);
+  });
+
+  it('updates a pet only as the current user', async () => {
+    petsService.update.mockResolvedValue({ id: 3, name: 'Rexy' });
+
+    await expect(controller.update(user, 3, { name: 'Rexy' })).resolves.toEqual(
+      {
+        id: 3,
+        name: 'Rexy',
+      },
+    );
+    expect(petsService.update).toHaveBeenCalledWith(3, 1, { name: 'Rexy' });
+  });
+
+  it('deletes a pet only as the current user', async () => {
+    petsService.remove.mockResolvedValue({ id: 3 });
+
+    await expect(controller.remove(user, 3)).resolves.toEqual({ id: 3 });
+    expect(petsService.remove).toHaveBeenCalledWith(3, 1);
   });
 });

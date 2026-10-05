@@ -10,7 +10,7 @@ describe('ReviewsController', () => {
     create: jest.fn(),
     findForUser: jest.fn(),
   };
-  const user = { id: 7, email: 'owner@example.com' } as JwtUser;
+  const user = { id: 1, email: 'owner@example.com' } as JwtUser;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -22,13 +22,23 @@ describe('ReviewsController', () => {
     controller = module.get(ReviewsController);
   });
 
-  it('attributes a new review to the current user', () => {
+  it('attributes a new review to the current user and returns it', async () => {
     const dto = { bookingId: 9, rating: 5 } as CreateReviewDto;
+    reviewsService.create.mockResolvedValue({ id: 1, rating: 5 });
 
-    controller.create(user, dto);
-    controller.findForUser(4);
+    await expect(controller.create(user, dto)).resolves.toEqual({
+      id: 1,
+      rating: 5,
+    });
+    expect(reviewsService.create).toHaveBeenCalledWith(1, dto);
+  });
 
-    expect(reviewsService.create).toHaveBeenCalledWith(7, dto);
+  it('loads reviews for the path user, not the caller', async () => {
+    const summary = { reviews: [], averageRating: null, reviewCount: 0 };
+    reviewsService.findForUser.mockResolvedValue(summary);
+
+    await expect(controller.findForUser(4)).resolves.toEqual(summary);
     expect(reviewsService.findForUser).toHaveBeenCalledWith(4);
+    expect(reviewsService.findForUser).not.toHaveBeenCalledWith(user.id);
   });
 });
