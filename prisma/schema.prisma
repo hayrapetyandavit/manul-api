@@ -159,6 +159,27 @@ model Review {
   @@map("reviews")
 }
 
+model OutboxEvent {
+  id            String @id @default(uuid(7)) @db.Uuid
+  aggregateType String
+  aggregateId   Int
+  eventType     String
+  payload       Json
+
+  status    OutboxStatus @default(PENDING)
+  attempts  Int          @default(0)
+  lastError String?
+
+  createdAt     DateTime @default(now())
+  nextAttemptAt DateTime?
+  publishedAt   DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@index([status, publishedAt])
+  @@index([aggregateType, aggregateId, createdAt])
+  @@map("outbox_events")
+}
+
 enum BookingStatus {
   PENDING
   ACCEPTED
@@ -204,4 +225,10 @@ enum PetTemperament {
 enum PetGender {
   MALE
   FEMALE
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
 }

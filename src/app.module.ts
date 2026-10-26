@@ -11,6 +11,7 @@ import { PetsModule } from './pets/pets.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { SittersModule } from './sitters/sitters.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     BookingsModule,
     SittersModule,
     ReviewsModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
