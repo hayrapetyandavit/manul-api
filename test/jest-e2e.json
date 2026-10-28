@@ -2,12 +2,31 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
+  "resolver": "<rootDir>/jest-resolver.cjs",
   "testRegex": ".e2e-spec.ts$",
   "testTimeout": 30000,
   "maxWorkers": 1,
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "allowJs": true,
+        "diagnostics": {
+          "ignoreCodes": [151002]
+        },
+        "tsconfig": {
+          "paths": {
+            "@nestjs/outbox/postgres": [
+              "node_modules/@nestjs/outbox/dist/postgres/index.d.ts"
+            ]
+          }
+        }
+      }
+    ]
   },
+  "transformIgnorePatterns": [
+    "/node_modules/(?!.*(?:@nestjs/outbox|@nestjs/store-kit))"
+  ],
   "modulePaths": ["<rootDir>/../"],
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"

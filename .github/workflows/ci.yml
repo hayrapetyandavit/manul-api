@@ -72,6 +72,11 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Check outbox schema
+        run: pnpm exec prisma migrate deploy && pnpm exec nest-outbox status
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/manul_test
+
       - name: End-to-end tests
         run: pnpm test:e2e
         env:

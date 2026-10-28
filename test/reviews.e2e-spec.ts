@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import * as request from 'supertest';
+import request from 'supertest';
 import { BookingStatus } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { bearer } from './utils/auth';

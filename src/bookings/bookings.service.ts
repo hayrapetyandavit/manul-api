@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
+import { Outbox } from '@nestjs/outbox';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { BookingStatus, Prisma } from 'generated/prisma/client';
@@ -34,7 +35,10 @@ export class BookingsService {
     },
   } satisfies Prisma.BookingInclude;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly outbox: Outbox<Prisma.TransactionClient>,
+  ) {}
 
   async create(ownerId: number, createBookingDto: CreateBookingDto) {
     const {
@@ -88,19 +92,31 @@ export class BookingsService {
       }
     }
 
-    return this.prisma.booking.create({
-      data: {
-        ownerId,
-        petId,
-        sitterProfileId,
-        sitterServiceId,
-        price,
-        startTime: start,
-        endTime: end,
-        ownerNotes,
-      },
-      include: this.bookingInclude,
+    const booking = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.booking.create({
+        data: {
+          ownerId,
+          petId,
+          sitterProfileId,
+          sitterServiceId,
+          price,
+          startTime: start,
+          endTime: end,
+          ownerNotes,
+        },
+        include: this.bookingInclude,
+      });
+
+      await this.outbox.add(tx, {
+        topic: 'booking.created',
+        payload: { bookingId: created.id },
+      });
+
+      return created;
     });
+
+    this.outbox.notify();
+    return booking;
   }
 
   async findUserBookings(userId: number) {

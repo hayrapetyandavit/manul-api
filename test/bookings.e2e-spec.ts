@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
+import { OutboxRelay } from '@nestjs/outbox';
 import { DateTime } from 'luxon';
-import * as request from 'supertest';
+import request from 'supertest';
 import { BookingStatus } from 'generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { bearer } from './utils/auth';
@@ -77,6 +78,23 @@ describe('Bookings (e2e)', () => {
 
     expect(aimed.body.sitterProfileId).toBe(profile.id);
     expect(Number(aimed.body.price)).toBe(25);
+  });
+
+  it('publishes booking.created after the booking commits', async () => {
+    const { owner, pet } = await bookingScene();
+
+    await request(app.getHttpServer())
+      .post('/bookings')
+      .set(bearer(owner))
+      .send({
+        petId: pet.id,
+        ...futureRange(),
+      })
+      .expect(201);
+
+    const relay = app.get(OutboxRelay);
+    await relay.runOnce();
+    expect(await relay.stats()).toMatchObject({ pending: 0, deadLetters: 0 });
   });
 
   it('requires both sitter ids or neither', async () => {
