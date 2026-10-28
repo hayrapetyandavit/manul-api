@@ -22,7 +22,7 @@ describe('PrismaService', () => {
     (service as unknown as { pool: { end: typeof end } }).pool.end = end;
 
     await service.onModuleInit();
-    await service.onModuleDestroy();
+    await service.onApplicationShutdown();
 
     expect(PrismaService.prototype.$connect).toHaveBeenCalledTimes(1);
     expect(PrismaService.prototype.$disconnect).toHaveBeenCalledTimes(1);

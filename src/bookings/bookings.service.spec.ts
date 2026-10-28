@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingStatus, PetType } from 'generated/prisma/enums';
-import { OutboxService } from 'src/outbox/outbox.service';
+import { Outbox } from '@nestjs/outbox';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BookingsService } from './bookings.service';
 
@@ -19,7 +19,7 @@ describe('BookingsService', () => {
     };
     $transaction: jest.Mock;
   };
-  let outbox: { add: jest.Mock };
+  let outbox: { add: jest.Mock; notify: jest.Mock };
 
   const createDto = {
     petId: 10,
@@ -42,13 +42,13 @@ describe('BookingsService', () => {
       },
       $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(prisma)),
     };
-    outbox = { add: jest.fn().mockResolvedValue({}) };
+    outbox = { add: jest.fn().mockResolvedValue({}), notify: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingsService,
         { provide: PrismaService, useValue: prisma },
-        { provide: OutboxService, useValue: outbox },
+        { provide: Outbox, useValue: outbox },
       ],
     }).compile();
 
@@ -86,11 +86,10 @@ describe('BookingsService', () => {
       }),
     );
     expect(outbox.add).toHaveBeenCalledWith(prisma, {
-      aggregateType: 'booking',
-      aggregateId: 1,
-      eventType: 'booking.created',
+      topic: 'booking.created',
       payload: { bookingId: 1 },
     });
+    expect(outbox.notify).toHaveBeenCalledTimes(1);
 
     prisma.booking.findFirst.mockResolvedValue({ id: 99 });
     await expect(service.create(1, createDto)).rejects.toBeInstanceOf(

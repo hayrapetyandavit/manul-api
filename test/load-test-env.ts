@@ -33,6 +33,7 @@ export function loadTestEnv() {
   }
 
   assertTestDatabase(process.env.DATABASE_URL);
+  process.env.OUTBOX_RELAY = 'off';
 }
 
 function applyAuthDefaults() {

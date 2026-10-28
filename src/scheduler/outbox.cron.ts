@@ -1,22 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { OutboxProcessor } from 'src/outbox/outbox.processor';
+import { OutboxInbox } from '@nestjs/outbox';
 
 @Injectable()
 export class OutboxCron {
-  constructor(private readonly processor: OutboxProcessor) {}
-
-  @Cron(CronExpression.EVERY_10_SECONDS, {
-    name: 'outbox_drain',
-  })
-  run() {
-    void this.processor.process();
-  }
+  constructor(private readonly inbox: OutboxInbox) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM, {
-    name: 'outbox_purge',
+    name: 'outbox_inbox_prune',
   })
-  purge() {
-    void this.processor.purgePublished();
+  prune() {
+    void this.inbox.prune('30d');
   }
 }

@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
-import { OutboxModule } from 'src/outbox/outbox.module';
 import { BookingsService } from './bookings.service';
 import { BookingsController } from './bookings.controller';
+import { BookingCreatedHandler } from './handlers/booking-created.handler';
 
 @Module({
-  imports: [OutboxModule],
   controllers: [BookingsController],
-  providers: [BookingsService],
+  providers: [BookingsService, BookingCreatedHandler],
 })
 export class BookingsModule {}
