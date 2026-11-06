@@ -88,6 +88,7 @@ describe('SittersService', () => {
     await service.createProfile(userId, {
       description: 'Walks',
       experienceYears: 3,
+      timezone: 'Asia/Tbilisi',
       userId: otherUserId,
     } as CreateSitterProfileDto);
 
@@ -96,6 +97,7 @@ describe('SittersService', () => {
         userId,
         description: 'Walks',
         experienceYears: 3,
+        timezone: 'Asia/Tbilisi',
       },
       include: { sitterServices: true },
     });

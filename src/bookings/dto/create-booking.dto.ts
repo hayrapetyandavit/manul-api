@@ -34,7 +34,8 @@ export class CreateBookingDto {
 
   @IsDateString()
   @DateRange({
-    min: ({ startTime }) => DateTime.fromISO(startTime),
+    min: ({ startTime }) =>
+      DateTime.fromISO(startTime).plus({ milliseconds: 1 }),
     max: ({ startTime }) => DateTime.fromISO(startTime).plus({ days: 7 }),
   })
   endTime: string;

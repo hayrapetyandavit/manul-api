@@ -34,6 +34,7 @@ export class SittersService {
         userId,
         description: dto.description,
         experienceYears: dto.experienceYears,
+        timezone: dto.timezone,
       },
       include: { sitterServices: true },
     });

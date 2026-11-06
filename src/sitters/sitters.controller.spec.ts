@@ -42,7 +42,7 @@ describe('SittersController', () => {
   });
 
   it('creates a profile for the current user', async () => {
-    const dto = { description: 'Walks' };
+    const dto = { description: 'Walks', timezone: 'UTC' };
     sittersService.createProfile.mockResolvedValue({ id: 10, userId: 1 });
 
     await expect(controller.createProfile(user, dto)).resolves.toEqual({
