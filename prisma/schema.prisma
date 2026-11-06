@@ -37,13 +37,16 @@ model SitterProfile {
   userId          Int      @unique
   description     String?
   experienceYears Int?
+  timezone        String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user           User            @relation(fields: [userId], references: [id])
-  sitterServices SitterService[]
-  bookings       Booking[]       @relation("SitterProfileBookings")
+  user                  User                         @relation(fields: [userId], references: [id])
+  sitterServices        SitterService[]
+  bookings              Booking[]                    @relation("SitterProfileBookings")
+  weeklyAvailability    WeeklyAvailability[]
+  availabilityOverrides AvailabilityOverride[]
 
   @@map("sitter_profiles")
 }
@@ -71,6 +74,7 @@ model SitterService {
   @@unique([sitterProfileId, type])
 }
 
+/// DB CHECK: endTime > startTime.
 model Booking {
   id              Int @id @default(autoincrement())
 
@@ -81,8 +85,8 @@ model Booking {
 
   price Decimal @default(0) @db.Decimal(10, 2)
 
-  startTime DateTime
-  endTime   DateTime
+  startTime DateTime @db.Timestamptz(3)
+  endTime   DateTime @db.Timestamptz(3)
 
   status BookingStatus @default(PENDING)
 
@@ -159,6 +163,49 @@ model Review {
   @@unique([bookingId, reviewerId])
   @@index([reviewerId])
   @@map("reviews")
+}
+
+/// Working hours in the sitter's local time. Not used for OVERNIGHT.
+/// weekday is ISO (Monday = 1 ... Sunday = 7), same as Postgres ISODOW and Luxon.
+/// DB CHECK: 1 <= weekday <= 7; 0 <= startMinute < endMinute <= 1440.
+/// DB EXCLUDE: windows of the same sitter and weekday must not overlap (touching ends are allowed).
+model WeeklyAvailability {
+  id              Int     @id @default(autoincrement())
+  sitterProfileId Int
+  weekday         Int
+  startMinute     Int
+  endMinute       Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sitterProfile SitterProfile @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
+
+  @@index([sitterProfileId, weekday])
+  @@map("weekly_availability")
+}
+
+/// One-off exceptions as absolute instants, applied to all services.
+/// BLOCK always wins over OPEN. DB CHECK: endTime > startTime.
+model AvailabilityOverride {
+  id              Int              @id @default(autoincrement())
+  sitterProfileId Int
+  startTime       DateTime         @db.Timestamptz(3)
+  endTime         DateTime         @db.Timestamptz(3)
+  type            DateOverrideType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sitterProfile SitterProfile @relation(fields: [sitterProfileId], references: [id], onDelete: Cascade)
+
+  @@index([sitterProfileId, endTime])
+  @@map("availability_overrides")
+}
+
+enum DateOverrideType {
+  BLOCK
+  OPEN
 }
 
 enum BookingStatus {
