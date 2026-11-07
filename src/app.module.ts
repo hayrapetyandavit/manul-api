@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { PetsModule } from './pets/pets.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { SittersModule } from './sitters/sitters.module';
+import { AvailabilityModule } from './availability/availability.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { OutboxModule, OutboxStorage } from '@nestjs/outbox';
@@ -40,6 +41,7 @@ import { PrismaService } from './prisma/prisma.service';
     PetsModule,
     BookingsModule,
     SittersModule,
+    AvailabilityModule,
     ReviewsModule,
     SchedulerModule,
   ],

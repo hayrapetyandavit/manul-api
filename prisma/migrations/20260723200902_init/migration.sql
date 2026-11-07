@@ -67,7 +67,7 @@ CREATE TABLE "sitter_services" (
 );
 
 -- CreateTable
-CREATE TABLE "sitter_weekly_hours" (
+CREATE TABLE "weekly_availability" (
     "id" SERIAL NOT NULL,
     "sitterProfileId" INTEGER NOT NULL,
     "weekday" INTEGER NOT NULL,
@@ -76,21 +76,20 @@ CREATE TABLE "sitter_weekly_hours" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "sitter_weekly_hours_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "weekly_availability_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "sitter_date_overrides" (
+CREATE TABLE "availability_overrides" (
     "id" SERIAL NOT NULL,
     "sitterProfileId" INTEGER NOT NULL,
-    "startTime" TIMESTAMP(3) NOT NULL,
-    "endTime" TIMESTAMP(3) NOT NULL,
+    "startTime" TIMESTAMPTZ(3) NOT NULL,
+    "endTime" TIMESTAMPTZ(3) NOT NULL,
     "type" "DateOverrideType" NOT NULL,
-    "reason" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "sitter_date_overrides_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "availability_overrides_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -165,10 +164,10 @@ CREATE INDEX "sitter_services_sitterProfileId_idx" ON "sitter_services"("sitterP
 CREATE UNIQUE INDEX "sitter_services_sitterProfileId_type_key" ON "sitter_services"("sitterProfileId", "type");
 
 -- CreateIndex
-CREATE INDEX "sitter_weekly_hours_sitterProfileId_weekday_idx" ON "sitter_weekly_hours"("sitterProfileId", "weekday");
+CREATE INDEX "weekly_availability_sitterProfileId_weekday_idx" ON "weekly_availability"("sitterProfileId", "weekday");
 
 -- CreateIndex
-CREATE INDEX "sitter_date_overrides_sitterProfileId_endTime_idx" ON "sitter_date_overrides"("sitterProfileId", "endTime");
+CREATE INDEX "availability_overrides_sitterProfileId_endTime_idx" ON "availability_overrides"("sitterProfileId", "endTime");
 
 -- CreateIndex
 CREATE INDEX "pets_ownerId_idx" ON "pets"("ownerId");
@@ -204,10 +203,10 @@ ALTER TABLE "sitter_profiles" ADD CONSTRAINT "sitter_profiles_userId_fkey" FOREI
 ALTER TABLE "sitter_services" ADD CONSTRAINT "sitter_services_sitterProfileId_fkey" FOREIGN KEY ("sitterProfileId") REFERENCES "sitter_profiles"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "sitter_weekly_hours" ADD CONSTRAINT "sitter_weekly_hours_sitterProfileId_fkey" FOREIGN KEY ("sitterProfileId") REFERENCES "sitter_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "weekly_availability" ADD CONSTRAINT "weekly_availability_sitterProfileId_fkey" FOREIGN KEY ("sitterProfileId") REFERENCES "sitter_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "sitter_date_overrides" ADD CONSTRAINT "sitter_date_overrides_sitterProfileId_fkey" FOREIGN KEY ("sitterProfileId") REFERENCES "sitter_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "availability_overrides" ADD CONSTRAINT "availability_overrides_sitterProfileId_fkey" FOREIGN KEY ("sitterProfileId") REFERENCES "sitter_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "pets" ADD CONSTRAINT "pets_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -231,25 +230,25 @@ ALTER TABLE "reviews" ADD CONSTRAINT "reviews_bookingId_fkey" FOREIGN KEY ("book
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_reviewerId_fkey" FOREIGN KEY ("reviewerId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- CheckConstraints
-ALTER TABLE "sitter_weekly_hours"
-  ADD CONSTRAINT "sitter_weekly_hours_weekday_check" CHECK ("weekday" BETWEEN 1 AND 7),
-  ADD CONSTRAINT "sitter_weekly_hours_minutes_check"
+ALTER TABLE "weekly_availability"
+  ADD CONSTRAINT "weekly_availability_weekday_check" CHECK ("weekday" BETWEEN 1 AND 7),
+  ADD CONSTRAINT "weekly_availability_minutes_check"
     CHECK ("startMinute" >= 0 AND "endMinute" <= 1440 AND "endMinute" > "startMinute");
 
 -- ExclusionConstraints (not expressible in schema.prisma)
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 -- Half-open ranges: 09:00-12:00 and 12:00-15:00 may coexist, 09:00-12:00 and 11:00-14:00 may not.
-ALTER TABLE "sitter_weekly_hours"
-  ADD CONSTRAINT "sitter_weekly_hours_no_overlap"
+ALTER TABLE "weekly_availability"
+  ADD CONSTRAINT "weekly_availability_no_overlap"
   EXCLUDE USING gist (
     "sitterProfileId" WITH =,
     "weekday" WITH =,
     int4range("startMinute", "endMinute") WITH &&
   );
 
-ALTER TABLE "sitter_date_overrides"
-  ADD CONSTRAINT "sitter_date_overrides_range_check" CHECK ("endTime" > "startTime");
+ALTER TABLE "availability_overrides"
+  ADD CONSTRAINT "availability_overrides_range_check" CHECK ("endTime" > "startTime");
 
 ALTER TABLE "bookings"
   ADD CONSTRAINT "bookings_range_check" CHECK ("endTime" > "startTime");

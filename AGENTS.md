@@ -39,6 +39,7 @@ src/
   users/                        # Current-user profile
   pets/                         # Owner pets
   sitters/                      # Sitter profiles and services
+  availability/                 # Weekly hours, overrides, and the availability check
   bookings/                     # Booking create/list/update and status transitions
   reviews/                      # Reviews for completed bookings
   common/
@@ -95,6 +96,10 @@ docker-compose.dev.yml          # Local Postgres
 - A user has at most one `SitterProfile` (`userId` is unique).
 - A sitter profile has at most one `SitterService` per `ServiceType` (`@@unique([sitterProfileId, type])`).
 - A booking may be an open request (`sitterProfileId` and `sitterServiceId` both null) or a request aimed at one sitter. Those two ids are supplied together or not at all.
+- A sitter may have any number of weekly-hours windows per weekday. `weekday` is Luxon `1` (Monday) through `7` (Sunday). Windows on the same day must not overlap; touching ends are allowed.
+- A sitter with no weekly-hours rows is unrestricted except for `BLOCK` overrides and `PENDING` or `ACCEPTED` bookings. The first weekly-hours row turns enforcement on, and a weekday with no row is then closed.
+- `BLOCK` overrides always win over weekly hours and `OPEN` overrides. `OVERNIGHT` services ignore weekly hours and `OPEN` overrides.
+- Free time is calculated when it is read. It is not stored. Targeted booking create checks it through `AvailabilityService.assertAvailable` before the overlap check.
 - `Booking.price` and `Pet.weightKg` are `Decimal`. Do not assume they serialize as plain numbers.
 - `User` deletion is a soft delete: `UsersService.remove` sets `isActive: false` and `deletedAt`. List queries that mean "active users" filter `deletedAt: null`.
 
@@ -129,7 +134,7 @@ Owner notes change only while `PENDING`. Sitter notes change only while `PENDING
 ### 4. Module organization
 
 - Co-locate `*.module.ts`, `*.service.ts`, `*.controller.ts`, `*.spec.ts`, and `dto/` inside the feature directory.
-- Sitters are one module with two controllers: profiles on `SittersController`, services on `SitterServicesController`.
+- Sitters are profiles on `SittersController` and services on `SitterServicesController`. Availability is its own module: `AvailabilityController` stays on `@Controller('sitters')`, and `AvailabilityModule` exports `AvailabilityService` for bookings.
 - Apply `@UseGuards(JwtAuthGuard)` at the controller class when every route is protected.
 - Inject the caller with `@CurrentUser() user: JwtUser`.
 - Scope owner and sitter queries by the authenticated user. Do not trust an owner id, sitter user id, or profile id from the body when it can be taken from `JwtUser`.
@@ -181,6 +186,7 @@ Google client settings are `CLIENT_ID`, `CLIENT_SECRET`, and `REDIRECT_URI`. Do 
 - Prisma `DateTime` writes take a JavaScript `Date`. Convert at the database boundary with `new Date(isoString)`, as `PetsService` and `BookingsService` do.
 - Do not pass raw ISO strings into Prisma date fields.
 - Booking create limits: `startTime` is from now through six months ahead; `endTime` is from `startTime` through seven days after `startTime`.
+- Weekly hours are minutes since local midnight in `SitterProfile.timezone`. Overrides and bookings are absolute instants. A public availability read covers at most 31 days (`availabilityHorizonDays`) and omits time that has already passed.
 
 ### 9. Naming and review hygiene
 
@@ -211,6 +217,7 @@ Routes below are the current controllers. Re-read the controller before adding o
 | Pets | `POST /pets`, `GET /pets/:id`, `PATCH /pets/:id`, `DELETE /pets/:id` | JWT |
 | Sitters | `GET /sitters`, `GET/POST/PATCH/DELETE /sitters/profile` | JWT |
 | Sitter services | `GET/POST /sitters/services`, `GET/PATCH/DELETE /sitters/services/:id` | JWT |
+| Sitter availability | `GET/PUT /sitters/availability/weekly-hours`, `GET/POST /sitters/availability/overrides`, `DELETE /sitters/availability/overrides/:id`, `GET /sitters/:sitterProfileId/availability` | JWT |
 | Bookings | `POST /bookings`, `GET /bookings`, `PATCH /bookings/:id` | JWT |
 | Reviews | `POST /reviews`, `GET /reviews/user/:userId` | JWT |
 

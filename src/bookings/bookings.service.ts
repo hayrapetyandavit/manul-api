@@ -13,6 +13,10 @@ import {
 } from './booking-status.transitions';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { DateTime } from 'luxon';
+import {
+  AvailabilityService,
+  blockingBookingStatuses,
+} from 'src/availability/availability.service';
 
 @Injectable()
 export class BookingsService {
@@ -38,6 +42,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outbox: Outbox<Prisma.TransactionClient>,
+    private readonly availability: AvailabilityService,
   ) {}
 
   async create(ownerId: number, createBookingDto: CreateBookingDto) {
@@ -72,13 +77,19 @@ export class BookingsService {
       });
 
       price = service.price;
+      await this.availability.assertAvailable(
+        sitterProfileId,
+        service.type,
+        start,
+        end,
+      );
     }
 
     if (sitterProfileId) {
       const overlap = await this.prisma.booking.findFirst({
         where: {
           sitterProfileId,
-          status: { in: [BookingStatus.PENDING, BookingStatus.ACCEPTED] },
+          status: { in: blockingBookingStatuses },
           startTime: { lt: end },
           endTime: { gt: start },
         },
