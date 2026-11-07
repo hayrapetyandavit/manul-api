@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsTimeZone, Min } from 'class-validator';
 
 export class CreateSitterProfileDto {
   @IsOptional()
@@ -9,4 +9,7 @@ export class CreateSitterProfileDto {
   @IsInt()
   @Min(0)
   experienceYears?: number;
+
+  @IsTimeZone()
+  timezone: string;
 }

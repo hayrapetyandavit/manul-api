@@ -82,6 +82,7 @@ export async function createSitter(
       userId,
       description: 'Experienced sitter',
       experienceYears: 3,
+      timezone: 'UTC',
     },
   });
 

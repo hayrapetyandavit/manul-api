@@ -31,13 +31,29 @@ describe('Sitters (e2e)', () => {
     await request(app.getHttpServer())
       .post('/sitters/profile')
       .set(bearer(sitter))
-      .send({ description: 'Cat specialist', experienceYears: 4 })
+      .send({ description: 'No zone' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/sitters/profile')
+      .set(bearer(sitter))
+      .send({ description: 'Bad zone', timezone: 'Mars/Olympus' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/sitters/profile')
+      .set(bearer(sitter))
+      .send({
+        description: 'Cat specialist',
+        experienceYears: 4,
+        timezone: 'Asia/Tbilisi',
+      })
       .expect(201);
 
     const duplicate = await request(app.getHttpServer())
       .post('/sitters/profile')
       .set(bearer(sitter))
-      .send({ description: 'Again' })
+      .send({ description: 'Again', timezone: 'UTC' })
       .expect(409);
 
     expectMessage(duplicate.body, 'already exists');
@@ -58,6 +74,7 @@ describe('Sitters (e2e)', () => {
       .expect(200);
 
     expect(profile.body.description).toBe('Cat specialist');
+    expect(profile.body.timezone).toBe('Asia/Tbilisi');
 
     const updated = await request(app.getHttpServer())
       .patch('/sitters/profile')
@@ -85,7 +102,7 @@ describe('Sitters (e2e)', () => {
     await request(app.getHttpServer())
       .post('/sitters/profile')
       .set(bearer(sitter))
-      .send({ description: 'Walker' })
+      .send({ description: 'Walker', timezone: 'UTC' })
       .expect(201);
 
     const created = await request(app.getHttpServer())

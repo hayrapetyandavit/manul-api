@@ -72,6 +72,12 @@ describe('CreateBookingDto', () => {
 
     expect(
       messages(
+        booking({ startTime: future.toISO()!, endTime: future.toISO()! }),
+      ).join(' '),
+    ).toContain('endTime must be within date range');
+
+    expect(
+      messages(
         booking({
           startTime: future.toISO()!,
           endTime: future.plus({ days: 8 }).toISO()!,

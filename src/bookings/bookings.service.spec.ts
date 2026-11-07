@@ -1,8 +1,9 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BookingStatus, PetType } from 'generated/prisma/enums';
+import { BookingStatus, PetType, ServiceType } from 'generated/prisma/enums';
 import { Outbox } from '@nestjs/outbox';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AvailabilityService } from 'src/availability/availability.service';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {
@@ -20,6 +21,7 @@ describe('BookingsService', () => {
     $transaction: jest.Mock;
   };
   let outbox: { add: jest.Mock; notify: jest.Mock };
+  let availability: { assertAvailable: jest.Mock };
 
   const createDto = {
     petId: 10,
@@ -43,12 +45,14 @@ describe('BookingsService', () => {
       $transaction: jest.fn((fn: (tx: unknown) => unknown) => fn(prisma)),
     };
     outbox = { add: jest.fn().mockResolvedValue({}), notify: jest.fn() };
+    availability = { assertAvailable: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingsService,
         { provide: PrismaService, useValue: prisma },
         { provide: Outbox, useValue: outbox },
+        { provide: AvailabilityService, useValue: availability },
       ],
     }).compile();
 
@@ -62,6 +66,7 @@ describe('BookingsService', () => {
     });
     prisma.sitterService.findFirstOrThrow.mockResolvedValue({
       price: 40,
+      type: ServiceType.WALKING,
       petTypes: [PetType.DOG],
     });
     prisma.booking.findFirst.mockResolvedValue(null);
@@ -90,6 +95,18 @@ describe('BookingsService', () => {
       payload: { bookingId: 1 },
     });
     expect(outbox.notify).toHaveBeenCalledTimes(1);
+    expect(availability.assertAvailable).toHaveBeenCalledWith(
+      20,
+      ServiceType.WALKING,
+      new Date(createDto.startTime),
+      new Date(createDto.endTime),
+    );
+    expect(
+      prisma.sitterService.findFirstOrThrow.mock.invocationCallOrder[0],
+    ).toBeLessThan(availability.assertAvailable.mock.invocationCallOrder[0]);
+    expect(
+      availability.assertAvailable.mock.invocationCallOrder[0],
+    ).toBeLessThan(prisma.booking.findFirst.mock.invocationCallOrder[0]);
 
     prisma.booking.findFirst.mockResolvedValue({ id: 99 });
     await expect(service.create(1, createDto)).rejects.toBeInstanceOf(
@@ -139,6 +156,27 @@ describe('BookingsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('rejects a targeted request the sitter is not available for', async () => {
+    prisma.pet.findUniqueOrThrow.mockResolvedValue({
+      id: 10,
+      type: PetType.DOG,
+    });
+    prisma.sitterService.findFirstOrThrow.mockResolvedValue({
+      price: 40,
+      type: ServiceType.WALKING,
+      petTypes: [PetType.DOG],
+    });
+    availability.assertAvailable.mockRejectedValue(
+      new ConflictException('Sitter is not available in that time range'),
+    );
+
+    await expect(service.create(1, createDto)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.booking.findFirst).not.toHaveBeenCalled();
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
   it('creates an open request without looking up a sitter or a price', async () => {
     prisma.pet.findUniqueOrThrow.mockResolvedValue({
       id: 10,
@@ -153,6 +191,7 @@ describe('BookingsService', () => {
     });
 
     expect(prisma.sitterService.findFirstOrThrow).not.toHaveBeenCalled();
+    expect(availability.assertAvailable).not.toHaveBeenCalled();
     expect(prisma.booking.findFirst).not.toHaveBeenCalled();
     expect(prisma.booking.create).toHaveBeenCalledWith(
       expect.objectContaining({
